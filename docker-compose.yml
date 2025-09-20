@@ -1,0 +1,55 @@
+services:
+  ethexporter:
+    image: hunterlong/ethexporter
+    ports:
+      - "9015:9015"
+    environment:
+      - GETH=https://sepolia.infura.io/v3/2a4fada943da45a0b232775d1951d0a2
+    volumes:
+      - /home/asthelow/Documents/Use_Case_2025/eth-monitor/mon_adresse.txt:/app/addresses.txt
+
+  prometheus:
+    image: prom/prometheus
+    ports: 
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+
+  grafana:
+    image: grafana/grafana
+    volumes: 
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`localhost`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls=true"      
+      - "traefik.http.routers.grafana.middlewares=ip-whitelist"
+      - "traefik.http.middlewares.ip-whitelist.ipwhitelist.sourcerange=172.18.0.5/16"
+    depends_on:
+      - prometheus
+      
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websecure.http.tls=true"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ~/Documents/Use_Case_2025/eth-monitor/certs:/certs:ro
+      - ~/Documents/Use_Case_2025/eth-monitor/traefik:/etc/traefik/dynamic:ro
+volumes:
+  grafana-data:
+  prometheus-data:
