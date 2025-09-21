@@ -1,0 +1,28 @@
+stages:
+  - validate
+  - deploy
+
+variables:
+  TF_ROOT: "./terraform"
+
+validate:
+  stage: validate
+  image: hashicorp/terraform:1.6.6
+  script:
+    - terraform --version
+    - terraform init -backend=false
+    - terraform validate
+    - terraform plan
+  only:
+    - merge_requests
+    - main
+
+apply:
+  stage: deploy
+  image: hashicorp/terraform:1.6.6
+  script:
+    - terraform init
+    - terraform apply -auto-approve
+  when: manual   # À la main 
+  only:
+    - main
